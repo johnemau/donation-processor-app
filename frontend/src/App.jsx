@@ -44,6 +44,11 @@ export default function App() {
   const [actionErrors, setActionErrors] = useState({});
   const [updating, setUpdating] = useState({});
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [filters, setFilters] = useState({});
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const handleSort = (key) => {
     setSortConfig(prev =>
@@ -53,9 +58,31 @@ export default function App() {
     );
   };
 
+  const COLUMNS = [
+    ['uuid', 'UUID'],
+    ['amount', 'Amount'],
+    ['paymentMethod', 'Payment Method'],
+    ['nonprofitId', 'Nonprofit'],
+    ['donorId', 'Donor'],
+    ['status', 'Status'],
+    ['createdAt', 'Created At'],
+  ];
+
   const sortedDonations = useMemo(() => {
-    if (!sortConfig.key) return donations;
-    return [...donations].sort((a, b) => {
+    const filtered = donations.filter(donation =>
+      COLUMNS.every(([key]) => {
+        const filterVal = (filters[key] || '').toLowerCase().trim();
+        if (!filterVal) return true;
+        const raw = donation[key];
+        let cellVal;
+        if (key === 'amount') cellVal = (raw / 100).toFixed(2);
+        else if (key === 'createdAt') cellVal = new Date(raw).toLocaleString().toLowerCase();
+        else cellVal = String(raw ?? '').toLowerCase();
+        return cellVal.includes(filterVal);
+      })
+    );
+    if (!sortConfig.key) return filtered;
+    return [...filtered].sort((a, b) => {
       let aVal = a[sortConfig.key];
       let bVal = b[sortConfig.key];
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
@@ -64,7 +91,7 @@ export default function App() {
       if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [donations, sortConfig]);
+  }, [donations, sortConfig, filters]);
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
@@ -131,7 +158,7 @@ export default function App() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-              {[['uuid', 'UUID'], ['amount', 'Amount'], ['paymentMethod', 'Payment Method'], ['nonprofitId', 'Nonprofit'], ['donorId', 'Donor'], ['status', 'Status'], ['createdAt', 'Created At']].map(([key, label]) => (
+              {COLUMNS.map(([key, label]) => (
                 <th
                   key={key}
                   onClick={() => handleSort(key)}
@@ -145,6 +172,33 @@ export default function App() {
                 </th>
               ))}
               <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Actions</th>
+            </tr>
+            <tr style={{ background: '#f9fafb' }}>
+              {COLUMNS.map(([key]) => (
+                <th key={key} style={{ padding: '4px 6px', border: '1px solid #e5e7eb', fontWeight: 'normal' }}>
+                  {key === 'status' ? (
+                    <select
+                      value={filters[key] || ''}
+                      onChange={e => handleFilterChange(key, e.target.value)}
+                      style={{ width: '100%', padding: '3px 4px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '3px' }}
+                    >
+                      <option value=''>All</option>
+                      {Object.keys(STATUS_TRANSITIONS).map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type='text'
+                      placeholder='Filter...'
+                      value={filters[key] || ''}
+                      onChange={e => handleFilterChange(key, e.target.value)}
+                      style={{ width: '100%', padding: '3px 4px', fontSize: '12px', border: '1px solid #d1d5db', borderRadius: '3px', boxSizing: 'border-box' }}
+                    />
+                  )}
+                </th>
+              ))}
+              <th style={{ padding: '4px 6px', border: '1px solid #e5e7eb' }} />
             </tr>
           </thead>
           <tbody>
@@ -217,7 +271,7 @@ export default function App() {
       )}
 
       <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '20px' }}>
-        Total donations: {donations.length}
+        Showing {sortedDonations.length} of {donations.length} donation{donations.length !== 1 ? 's' : ''}
       </p>
     </div>
   );
