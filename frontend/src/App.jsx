@@ -1,41 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-
-const API_BASE = '/donations';
-
-const STATUS_TRANSITIONS = {
-  new: ['pending'],
-  pending: ['success', 'failure'],
-  success: [],
-  failure: [],
-};
-
-const STATUS_COLORS = {
-  new: { background: '#dbeafe', color: '#1e40af' },
-  pending: { background: '#fef9c3', color: '#854d0e' },
-  success: { background: '#dcfce7', color: '#166534' },
-  failure: { background: '#fee2e2', color: '#991b1b' },
-};
-
-const formatAmount = (cents) => {
-  return `$${(cents / 100).toFixed(2)}`;
-};
-
-const formatDate = (isoString) => {
-  return new Date(isoString).toLocaleString();
-};
-
-const StatusBadge = ({ status }) => (
-  <span style={{
-    ...STATUS_COLORS[status],
-    padding: '2px 8px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  }}>
-    {status}
-  </span>
-);
+import StatusBadge from './components/StatusBadge';
+import { STATUS_TRANSITIONS, STATUS_COLORS, COLUMNS } from './utils/constants';
+import { formatAmount } from './utils/formatAmount';
+import { formatDate } from './utils/formatDate';
+import { computeSummary } from './utils/computeSummary';
+import { sortAndFilterDonations } from './utils/sortAndFilterDonations';
+import { getDonations, patchDonationStatus } from './utils/donationsApi';
 
 export default function App() {
   const [donations, setDonations] = useState([]);
@@ -58,66 +28,19 @@ export default function App() {
     );
   };
 
-  const COLUMNS = [
-    ['uuid', 'UUID'],
-    ['amount', 'Amount'],
-    ['paymentMethod', 'Payment Method'],
-    ['nonprofitId', 'Nonprofit'],
-    ['donorId', 'Donor'],
-    ['status', 'Status'],
-    ['createdAt', 'Created At'],
-  ];
+  const summary = useMemo(() => computeSummary(donations), [donations]);
 
-  const summary = useMemo(() => {
-    const byMethod = {};
-    let successCount = 0;
-    let failureCount = 0;
-    let terminalCount = 0;
-    for (const d of donations) {
-      if (!byMethod[d.paymentMethod]) {
-        byMethod[d.paymentMethod] = { count: 0, total: 0 };
-      }
-      byMethod[d.paymentMethod].count += 1;
-      byMethod[d.paymentMethod].total += d.amount;
-      if (d.status === 'success') { successCount += 1; terminalCount += 1; }
-      else if (d.status === 'failure') { failureCount += 1; terminalCount += 1; }
-    }
-    return { byMethod, successCount, failureCount, terminalCount, total: donations.length };
-  }, [donations]);
-
-  const sortedDonations = useMemo(() => {
-    const filtered = donations.filter(donation =>
-      COLUMNS.every(([key]) => {
-        const filterVal = (filters[key] || '').toLowerCase().trim();
-        if (!filterVal) return true;
-        const raw = donation[key];
-        let cellVal;
-        if (key === 'amount') cellVal = (raw / 100).toFixed(2);
-        else if (key === 'createdAt') cellVal = new Date(raw).toLocaleString().toLowerCase();
-        else cellVal = String(raw ?? '').toLowerCase();
-        return cellVal.includes(filterVal);
-      })
-    );
-    if (!sortConfig.key) return filtered;
-    return [...filtered].sort((a, b) => {
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
-      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
-      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-  }, [donations, sortConfig, filters]);
+  const sortedDonations = useMemo(
+    () => sortAndFilterDonations(donations, sortConfig, filters),
+    [donations, sortConfig, filters]
+  );
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(API_BASE);
-      if (!res.ok) throw new Error(`Failed to fetch donations: ${res.status}`);
-      const data = await res.json();
-      setDonations(data.donations);
+      const data = await getDonations();
+      setDonations(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -133,17 +56,8 @@ export default function App() {
     setUpdating(prev => ({ ...prev, [uuid]: true }));
     setActionErrors(prev => ({ ...prev, [uuid]: null }));
     try {
-      const res = await fetch(`${API_BASE}/${uuid}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setActionErrors(prev => ({ ...prev, [uuid]: data.error || `Error ${res.status}` }));
-      } else {
-        setDonations(prev => prev.map(d => d.uuid === uuid ? data : d));
-      }
+      const updated = await patchDonationStatus(uuid, newStatus);
+      setDonations(prev => prev.map(d => d.uuid === uuid ? updated : d));
     } catch (err) {
       setActionErrors(prev => ({ ...prev, [uuid]: err.message }));
     } finally {
