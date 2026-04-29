@@ -92,7 +92,7 @@ const donations = [
 module.exports = {
   getAll: () => [...donations],
   findByUuid: (uuid) => donations.find(d => d.uuid === uuid) || null,
-  add: (donation) => { donations.push(donation); },
+  add: (donation) => { donations.push(donation); return { ...donation }; },
   updateStatus: (uuid, status) => {
     const donation = donations.find(d => d.uuid === uuid);
     if (donation) {
