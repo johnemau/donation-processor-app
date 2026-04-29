@@ -44,6 +44,53 @@ Updates donation status. Valid transitions:
 
 Returns 200 on success, 409 for duplicate (same status), 422 for invalid transition, 404 if not found.
 
+## Webhook API
+
+Webhooks allow external services to receive real-time notifications when a donation reaches a terminal status (`success` or `failure`).
+
+### POST /webhooks
+Register a new webhook endpoint.
+
+**Request body:**
+```json
+{
+  "url": "https://example.com/your-endpoint",
+  "events": ["success", "failure"]
+}
+```
+
+- `url` — required, must be a valid `http` or `https` URL
+- `events` — required non-empty array; valid values: `success`, `failure`
+
+**Response (201):**
+```json
+{
+  "id": "a1b2c3d4-...",
+  "url": "https://example.com/your-endpoint",
+  "events": ["success", "failure"],
+  "createdAt": "2026-04-29T10:00:00.000Z"
+}
+```
+
+### GET /webhooks
+Returns all registered webhooks: `{ webhooks: Webhook[] }`
+
+### DELETE /webhooks/:id
+Removes a registered webhook. Returns 204 on success, 404 if not found.
+
+### How it works
+
+When `PATCH /donations/:uuid/status` transitions a donation to `success` or `failure`, the server delivers a `POST` request to every webhook registered for that event. The payload is:
+
+```json
+{
+  "event": "success",
+  "donation": { ...full donation object }
+}
+```
+
+Delivery is fire-and-forget — the API response is returned immediately and webhook delivery happens asynchronously. Individual delivery failures are suppressed (network errors, timeouts, non-2xx responses) so they never affect the API caller. Each delivery attempt has a 10-second timeout.
+
 ## Design Decisions
 
 ### Idempotency (PATCH /donations/:uuid/status)

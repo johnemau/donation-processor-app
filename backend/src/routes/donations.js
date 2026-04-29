@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const store = require('../store');
+const { dispatch } = require('../webhookDispatcher');
 
 const VALID_PAYMENT_METHODS = ['cc', 'ach', 'crypto', 'venmo'];
 const VALID_STATUSES = ['new', 'pending', 'success', 'failure'];
@@ -99,6 +100,11 @@ router.patch('/:uuid/status', (req, res) => {
   }
 
   const updated = store.updateStatus(req.params.uuid, status);
+
+  if (status === 'success' || status === 'failure') {
+    dispatch(status, updated).catch(() => {});
+  }
+
   return res.json(updated);
 });
 

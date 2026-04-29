@@ -91,6 +91,9 @@ const donations = [
 
 const cloneDonation = (donation) => ({ ...donation });
 
+const webhooks = [];
+const cloneWebhook = (webhook) => ({ ...webhook });
+
 module.exports = {
   getAll: () => donations.map(cloneDonation),
   findByUuid: (uuid) => {
@@ -112,5 +115,27 @@ module.exports = {
   },
   reset: () => {
     donations.length = 0;
+  },
+
+  // Webhook store
+  addWebhook: (webhook) => {
+    const webhookToStore = cloneWebhook(webhook);
+    webhooks.push(webhookToStore);
+    return cloneWebhook(webhookToStore);
+  },
+  getAllWebhooks: () => webhooks.map(cloneWebhook),
+  findWebhookById: (id) => {
+    const webhook = webhooks.find(w => w.id === id);
+    return webhook ? cloneWebhook(webhook) : null;
+  },
+  getWebhooksForEvent: (event) => webhooks.filter(w => w.events.includes(event)).map(cloneWebhook),
+  removeWebhook: (id) => {
+    const idx = webhooks.findIndex(w => w.id === id);
+    if (idx === -1) return false;
+    webhooks.splice(idx, 1);
+    return true;
+  },
+  resetWebhooks: () => {
+    webhooks.length = 0;
   },
 };
