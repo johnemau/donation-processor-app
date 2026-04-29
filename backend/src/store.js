@@ -110,4 +110,7 @@ module.exports = {
     }
     return donation ? cloneDonation(donation) : null;
   },
+  reset: () => {
+    donations.length = 0;
+  },
 };
