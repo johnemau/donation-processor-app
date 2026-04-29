@@ -89,16 +89,25 @@ const donations = [
   }
 ];
 
+const cloneDonation = (donation) => ({ ...donation });
+
 module.exports = {
-  getAll: () => [...donations],
-  findByUuid: (uuid) => donations.find(d => d.uuid === uuid) || null,
-  add: (donation) => { donations.push(donation); return { ...donation }; },
+  getAll: () => donations.map(cloneDonation),
+  findByUuid: (uuid) => {
+    const donation = donations.find(d => d.uuid === uuid);
+    return donation ? cloneDonation(donation) : null;
+  },
+  add: (donation) => {
+    const donationToStore = cloneDonation(donation);
+    donations.push(donationToStore);
+    return cloneDonation(donationToStore);
+  },
   updateStatus: (uuid, status) => {
     const donation = donations.find(d => d.uuid === uuid);
     if (donation) {
       donation.status = status;
       donation.updatedAt = new Date().toISOString();
     }
-    return donation ? { ...donation } : null;
+    return donation ? cloneDonation(donation) : null;
   },
 };

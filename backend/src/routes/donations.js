@@ -53,7 +53,7 @@ router.post('/', (req, res) => {
     donorId,
     status,
     createdAt,
-    updatedAt: new Date().toISOString(),
+    updatedAt: createdAt,
   };
 
   store.add(donation);
