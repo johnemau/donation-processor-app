@@ -124,7 +124,7 @@ export default function App() {
               const transitions = STATUS_TRANSITIONS[donation.status] || [];
               return (
                 <tr key={donation.uuid} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '12px' }}>
+                  <td title={donation.uuid} style={{ padding: '10px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '12px' }}>
                     {donation.uuid.substring(0, 8)}...
                   </td>
                   <td style={{ padding: '10px', border: '1px solid #e5e7eb' }}>
