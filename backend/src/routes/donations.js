@@ -12,6 +12,7 @@ const STATUS_TRANSITIONS = {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ISO_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
 // POST /donations
 router.post('/', (req, res) => {
@@ -35,8 +36,8 @@ router.post('/', (req, res) => {
   if (!VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
   }
-  if (isNaN(Date.parse(createdAt))) {
-    return res.status(400).json({ error: 'createdAt must be a valid ISO datetime string' });
+  if (!ISO_DATETIME_REGEX.test(createdAt)) {
+    return res.status(400).json({ error: 'createdAt must be a valid ISO datetime string with timezone (e.g. 2024-01-15T10:30:00Z or 2024-01-15T10:30:00+05:30)' });
   }
 
   if (store.findByUuid(uuid)) {
