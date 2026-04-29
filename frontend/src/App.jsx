@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 const API_BASE = '/donations';
 
@@ -43,6 +43,28 @@ export default function App() {
   const [error, setError] = useState(null);
   const [actionErrors, setActionErrors] = useState({});
   const [updating, setUpdating] = useState({});
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+
+  const handleSort = (key) => {
+    setSortConfig(prev =>
+      prev.key === key
+        ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: 'asc' }
+    );
+  };
+
+  const sortedDonations = useMemo(() => {
+    if (!sortConfig.key) return donations;
+    return [...donations].sort((a, b) => {
+      let aVal = a[sortConfig.key];
+      let bVal = b[sortConfig.key];
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [donations, sortConfig]);
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
@@ -109,18 +131,24 @@ export default function App() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
             <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>UUID</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Amount</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Payment Method</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Nonprofit</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Donor</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Status</th>
-              <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Created At</th>
+              {[['uuid', 'UUID'], ['amount', 'Amount'], ['paymentMethod', 'Payment Method'], ['nonprofitId', 'Nonprofit'], ['donorId', 'Donor'], ['status', 'Status'], ['createdAt', 'Created At']].map(([key, label]) => (
+                <th
+                  key={key}
+                  onClick={() => handleSort(key)}
+                  style={{ padding: '10px', border: '1px solid #e5e7eb', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                >
+                  {label}
+                  {' '}
+                  <span style={{ color: sortConfig.key === key ? '#3b82f6' : '#9ca3af', fontSize: '11px' }}>
+                    {sortConfig.key === key ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '⇅'}
+                  </span>
+                </th>
+              ))}
               <th style={{ padding: '10px', border: '1px solid #e5e7eb' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {donations.map(donation => {
+            {sortedDonations.map(donation => {
               const transitions = STATUS_TRANSITIONS[donation.status] || [];
               return (
                 <tr key={donation.uuid} style={{ borderBottom: '1px solid #e5e7eb' }}>
