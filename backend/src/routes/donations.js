@@ -63,7 +63,14 @@ router.post('/', (req, res) => {
 
 // GET /donations
 router.get('/', (req, res) => {
-  return res.json({ donations: store.getAll() });
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+  const all = store.getAll();
+  const total = all.length;
+  const donations = all.slice(offset, offset + limit);
+
+  return res.json({ donations, total, limit, offset });
 });
 
 // GET /donations/:uuid

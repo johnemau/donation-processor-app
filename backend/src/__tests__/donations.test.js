@@ -141,11 +141,11 @@ describe('POST /donations', () => {
 // GET /donations
 // ---------------------------------------------------------------------------
 describe('GET /donations', () => {
-  test('returns { donations: [] } when store is empty', async () => {
+  test('returns empty page when store is empty', async () => {
     const res = await request(app).get('/donations');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ donations: [] });
+    expect(res.body).toEqual({ donations: [], total: 0, limit: 20, offset: 0 });
   });
 
   test('returns all created donations', async () => {
@@ -160,11 +160,25 @@ describe('GET /donations', () => {
     const res = await request(app).get('/donations');
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('donations');
+    expect(res.body.total).toBe(2);
     expect(res.body.donations).toHaveLength(2);
     expect(res.body.donations.map((d) => d.uuid)).toEqual(
       expect.arrayContaining([validDonation.uuid, second.uuid])
     );
+  });
+
+  test('paginates with limit and offset', async () => {
+    const second = { ...validDonation, uuid: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' };
+    await request(app).post('/donations').send(validDonation);
+    await request(app).post('/donations').send(second);
+
+    const res = await request(app).get('/donations?limit=1&offset=1');
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(2);
+    expect(res.body.limit).toBe(1);
+    expect(res.body.offset).toBe(1);
+    expect(res.body.donations).toHaveLength(1);
   });
 });
 
