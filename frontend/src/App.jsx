@@ -68,6 +68,23 @@ export default function App() {
     ['createdAt', 'Created At'],
   ];
 
+  const summary = useMemo(() => {
+    const byMethod = {};
+    let successCount = 0;
+    let failureCount = 0;
+    let terminalCount = 0;
+    for (const d of donations) {
+      if (!byMethod[d.paymentMethod]) {
+        byMethod[d.paymentMethod] = { count: 0, total: 0 };
+      }
+      byMethod[d.paymentMethod].count += 1;
+      byMethod[d.paymentMethod].total += d.amount;
+      if (d.status === 'success') { successCount += 1; terminalCount += 1; }
+      else if (d.status === 'failure') { failureCount += 1; terminalCount += 1; }
+    }
+    return { byMethod, successCount, failureCount, terminalCount, total: donations.length };
+  }, [donations]);
+
   const sortedDonations = useMemo(() => {
     const filtered = donations.filter(donation =>
       COLUMNS.every(([key]) => {
@@ -149,6 +166,67 @@ export default function App() {
       {error && (
         <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#991b1b', padding: '12px', borderRadius: '4px', marginBottom: '20px' }}>
           {error}
+        </div>
+      )}
+
+      {!loading && (
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
+          <div style={{ flex: '1 1 320px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Donated by Payment Method</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', color: '#6b7280', fontWeight: '600' }}>Method</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280', fontWeight: '600' }}>Donations</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#6b7280', fontWeight: '600' }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(summary.byMethod).sort(([a], [b]) => a.localeCompare(b)).map(([method, { count, total }]) => (
+                  <tr key={method} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '6px 8px', textTransform: 'uppercase', fontWeight: '500' }}>{method}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280' }}>{count}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: '600', color: '#166534' }}>{formatAmount(total)}</td>
+                  </tr>
+                ))}
+                {Object.keys(summary.byMethod).length === 0 && (
+                  <tr><td colSpan={3} style={{ padding: '8px', color: '#9ca3af', textAlign: 'center' }}>No data</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ flex: '0 1 260px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Success / Failure Rate</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ ...STATUS_COLORS.success, padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Success</span>
+                <span style={{ fontWeight: '700', fontSize: '18px', color: '#166534' }}>
+                  {summary.successCount}
+                  <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '400', marginLeft: '4px' }}>
+                    ({summary.terminalCount > 0 ? ((summary.successCount / summary.terminalCount) * 100).toFixed(1) : '—'}%)
+                  </span>
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ ...STATUS_COLORS.failure, padding: '2px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase' }}>Failure</span>
+                <span style={{ fontWeight: '700', fontSize: '18px', color: '#991b1b' }}>
+                  {summary.failureCount}
+                  <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '400', marginLeft: '4px' }}>
+                    ({summary.terminalCount > 0 ? ((summary.failureCount / summary.terminalCount) * 100).toFixed(1) : '—'}%)
+                  </span>
+                </span>
+              </div>
+              {summary.terminalCount > 0 && (
+                <div style={{ marginTop: '4px', height: '8px', borderRadius: '4px', background: '#fee2e2', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${(summary.successCount / summary.terminalCount) * 100}%`, background: '#22c55e', borderRadius: '4px' }} />
+                </div>
+              )}
+              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                Based on {summary.terminalCount} resolved of {summary.total} total
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
