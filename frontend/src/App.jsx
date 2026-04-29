@@ -154,27 +154,31 @@ export default function App() {
                     {transitions.length === 0 ? (
                       <span style={{ color: '#9ca3af', fontSize: '12px' }}>No actions available</span>
                     ) : (
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      <select
+                        defaultValue=""
+                        disabled={updating[donation.uuid]}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            updateStatus(donation.uuid, e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          border: '1px solid #d1d5db',
+                          fontSize: '12px',
+                          cursor: updating[donation.uuid] ? 'not-allowed' : 'pointer',
+                          opacity: updating[donation.uuid] ? 0.6 : 1,
+                        }}
+                      >
+                        <option value="">Select action...</option>
                         {transitions.map(nextStatus => (
-                          <button
-                            key={nextStatus}
-                            onClick={() => updateStatus(donation.uuid, nextStatus)}
-                            disabled={updating[donation.uuid]}
-                            style={{
-                              padding: '4px 10px',
-                              cursor: updating[donation.uuid] ? 'not-allowed' : 'pointer',
-                              background: nextStatus === 'success' ? '#16a34a' : nextStatus === 'failure' ? '#dc2626' : '#2563eb',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              opacity: updating[donation.uuid] ? 0.6 : 1,
-                            }}
-                          >
+                          <option key={nextStatus} value={nextStatus}>
                             → {nextStatus}
-                          </button>
+                          </option>
                         ))}
-                      </div>
+                      </select>
                     )}
                   </td>
                 </tr>
