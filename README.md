@@ -9,21 +9,13 @@ A full-stack internal tool for processing and managing donations.
 
 ## Running the Application
 
-### Backend
+From the project root, run:
+
 ```bash
-cd backend
-npm install
-npm start
+./start.sh
 ```
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Then open http://localhost:3000.
+This checks that Node.js is installed, runs `npm install` for both backend and frontend, and starts both servers. Then open http://localhost:3000.
 
 ## API Documentation
 
