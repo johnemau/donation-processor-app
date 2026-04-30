@@ -15,7 +15,15 @@ From the project root, run:
 ./start.sh
 ```
 
-This checks that Node.js is installed, runs `npm install` for both backend and frontend, and starts both servers. Then open http://localhost:3000.
+This checks that Node.js is installed, runs `npm install` for both backend and frontend, and starts both servers. Then open http://localhost:3000 in your browser.
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `PORT` | No | `3001` | Port the API server listens on |
+| `CORS_ORIGIN` | No | `http://localhost:3000` | Allowed CORS origin for the frontend |
+| `LOG_LEVEL` | No | `info` | Pino log level (`trace`, `debug`, `info`, `warn`, `error`) |
 
 ## API Documentation
 
@@ -23,7 +31,21 @@ This checks that Node.js is installed, runs `npm install` for both backend and f
 Ingest a new donation. Returns 201 on success, 409 if UUID already exists, 400 for invalid payload.
 
 ### GET /donations
-Returns all donations: `{ donations: Donation[] }`
+Returns a paginated list of donations.
+
+**Query parameters:**
+- `limit` — number of results per page (1–100, default `20`)
+- `offset` — number of results to skip (default `0`)
+
+**Response:**
+```json
+{
+  "donations": [...],
+  "total": 42,
+  "limit": 20,
+  "offset": 0
+}
+```
 
 ### GET /donations/:uuid
 Returns a single donation or 404.
@@ -82,6 +104,37 @@ When `PATCH /donations/:uuid/status` transitions a donation to `success` or `fai
 ```
 
 Delivery is fire-and-forget — the API response is returned immediately and webhook delivery happens asynchronously. Individual delivery failures are suppressed (network errors, timeouts, non-2xx responses) so they never affect the API caller. Each delivery attempt has a 10-second timeout.
+
+## Production Hardening
+
+The following changes were made to bring the application to a production-ready state.
+
+### Security headers (`helmet`)
+Added `helmet` middleware, which sets `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`, and other defensive HTTP headers on every response.
+
+### Rate limiting (`express-rate-limit`)
+Added a rate limiter (100 requests per 15-minute window per IP) to protect against abuse. The limiter is automatically bypassed in the test environment.
+
+### Structured logging (`pino` + `pino-http`)
+Replaced `console.log` with `pino` for structured JSON logging. `pino-http` adds per-request log entries (method, URL, status, response time). Log level is configurable via the `LOG_LEVEL` environment variable and is silenced in tests.
+
+### Global error handler
+Added a four-argument Express error-handling middleware as the last middleware in `app.js`. Unhandled errors from any route are caught and returned as a JSON response. 5xx errors suppress the internal message to avoid leaking implementation details; the full error is logged via `pino`.
+
+### Request body size limit
+`express.json()` is now configured with `{ limit: '100kb' }` to prevent unbounded request body payloads from exhausting memory.
+
+### Health check endpoint (`GET /health`)
+Added `GET /health` → `200 { "status": "ok" }` for use by load balancers, container orchestrators (Kubernetes readiness/liveness probes), and uptime monitors.
+
+### Configurable `PORT`
+The server port is now read from `process.env.PORT` (falling back to `3001`) instead of being hardcoded.
+
+### Graceful shutdown
+`SIGTERM` and `SIGINT` handlers call `server.close()` to allow in-flight requests to complete before the process exits. This is required for zero-downtime restarts in containerised environments.
+
+### Pagination (`GET /donations`)
+`GET /donations` now accepts `limit` (1–100, default 20) and `offset` query parameters and returns `{ donations, total, limit, offset }`. The `total` count is fetched in parallel with the page query.
 
 ## Design Decisions
 
